@@ -133,16 +133,16 @@ class TicTacToe(Game):
             print('|'.join(to_str[state[i * self.width + j]] for j in range(self.width)))
             if i != self.height - 1:
                 print('-' * (self.width * 2 - 1))
-        print('#' * 30)
+        print('\n')
 
 
 class MinMax(TicTacToe):
     def __init__(self, size: tuple[int, int] = (3, 3)):
         super().__init__(size)
-        self.num_utility = 0
+        self.num_leafs = 0
 
     def utility(self, state: state, player: player = TicTacToe.X) -> utility:
-        self.num_utility += 1
+        self.num_leafs += 1
         return super().utility(state, player)
 
     def minimax(self, state: state, player: player) -> action:
@@ -162,8 +162,71 @@ class MinMax(TicTacToe):
         return min(value)
 
 
+class Heuristic(TicTacToe):
+    def __init__(self, size: tuple[int, int] = (3, 3), depth: int = 3):
+        super().__init__(size)
+        self.num_leafs = 0
+        self.depth = depth
+
+    @cache
+    def possible_winning_lines(self, state: state, player: player) -> int:
+        """
+        Returns the number of possible winning lines for the given player
+        :param state: state
+        :param player: player
+        :return: number of possible winning lines for the given player
+        """
+        best_state = tuple(player if i == self.EMPTY else i for i in state)
+        cnt = 0
+        for i in range(self.height):
+            if best_state[i * self.width] == player and self.all_same(best_state[i * self.width: (i + 1) * self.width]):
+                cnt += 1
+
+        for i in range(self.width):
+            if best_state[i] == player and self.all_same(best_state[i::self.width]):
+                cnt += 1
+
+        if best_state[0] == player and self.all_same(best_state[::self.width + 1]):
+            cnt += 1
+
+        if best_state[self.width - 1] and self.all_same(best_state[self.width - 1:-1:self.width - 1]):
+            cnt += 1
+
+        return cnt
+
+    def heuristic(self, state: state, player: player) -> utility:
+        """
+        Heuristic function
+        :param state: state
+        :param player: player
+        :return: heuristic value
+        """
+        self.num_leafs += 1
+        if self.terminal_test(state):
+            return self.utility(state, player) * 100
+        else:
+            return self.possible_winning_lines(state, player) - self.possible_winning_lines(state, -player)
+
+    def minimax(self, state: state, player: player) -> action:
+        value = [self.min_value(self.result(state, a), player, self.depth - 1) for a in self.actions(state)]
+        return self.actions(state)[value.index(max(value))]
+
+    def max_value(self, state: state, player: player, depth: int) -> int:
+        if depth == 0 or self.terminal_test(state):
+            return self.heuristic(state, player)
+        value = [self.min_value(self.result(state, a), player, depth - 1) for a in self.actions(state)]
+        return max(value)
+
+    def min_value(self, state: state, player: player, depth: int) -> int:
+        if depth == 0 or self.terminal_test(state):
+            return self.heuristic(state, player)
+        value = [self.max_value(self.result(state, a), player, depth - 1) for a in self.actions(state)]
+        return min(value)
+
+
 if __name__ == '__main__':
-    game = MinMax((3, 3))
+    # game = MinMax((3, 3))
+    game = Heuristic((3, 3))
     state = game.initial_state()
     start = time.time()
     while not game.terminal_test(state):
@@ -179,5 +242,5 @@ if __name__ == '__main__':
         state = game.result(state, action)
         game.print_state(state)
     print('Draw' if game.utility(state) == 0 else 'You lose' if game.utility(state) == 10 else 'You win')
-    print(f'{game.num_utility} utility calls')
+    print(f'Evaluated {game.num_leafs} leaf nodes')
     print(f'{(time.time() - start) * 1000:.2f} ms')

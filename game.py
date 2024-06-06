@@ -1,10 +1,11 @@
+import time
 from abc import abstractmethod
-from array import array
+from functools import cache
 
-state = array
 action = int
 player = int
 utility = int
+state = tuple[player, ...]
 
 
 class Game:
@@ -75,21 +76,24 @@ class TicTacToe(Game):
         self.height, self.width = size
 
     def initial_state(self) -> state:
-        return array('b', [self.EMPTY] * self.height * self.width)
+        return tuple(self.EMPTY for _ in range(self.height * self.width))
 
+    @cache
     def actions(self, state: state) -> tuple[action, ...]:
         return tuple(i for i, v in enumerate(state) if v == self.EMPTY)
 
+    @cache
     def result(self, state: state, action: action) -> state:
-        new_state = state[:]
-        player_ = self.O if state.count(self.X) > state.count(self.O) else self.X
+        new_state = list(state)
+        player_ = self.O if new_state.count(self.X) > new_state.count(self.O) else self.X
         new_state[action] = player_
-        return new_state
+        return tuple(new_state)
 
+    @cache
     def all_same(self, state: state) -> bool:
         return len(set(state)) == 1
-        # return all(state[i] == state[0] for i in range(len(state)))
 
+    @cache
     def utility(self, state: state, player: player = X) -> utility:
         for i in range(self.height):
             if self.all_same(state[i * self.width: (i + 1) * self.width]):
@@ -119,6 +123,7 @@ class TicTacToe(Game):
 
         return self.DRAW
 
+    @cache
     def terminal_test(self, state: state) -> bool:
         return len(self.actions(state)) == 0 or self.utility(state) != self.DRAW
 
@@ -160,16 +165,19 @@ class MinMax(TicTacToe):
 if __name__ == '__main__':
     game = MinMax((3, 3))
     state = game.initial_state()
+    start = time.time()
     while not game.terminal_test(state):
+        # action = int(input(f'Enter your move {game.actions(state)}: '))
         action = game.minimax(state, game.X)
         state = game.result(state, action)
         game.print_state(state)
 
         if game.terminal_test(state):
             break
-        # action = int(input(f'Enter your move {game.actions(state)}: '))
+
         action = game.minimax(state, game.O)
         state = game.result(state, action)
         game.print_state(state)
     print('Draw' if game.utility(state) == 0 else 'You lose' if game.utility(state) == 10 else 'You win')
-    print(game.num_utility)
+    print(f'{game.num_utility} utility calls')
+    print(f'{(time.time() - start) * 1000:.2f} ms')

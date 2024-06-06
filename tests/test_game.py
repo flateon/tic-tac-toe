@@ -15,7 +15,7 @@ class TestTicTacToe(unittest.TestCase):
             'O': self.game.O,
             ' ': self.game.EMPTY
         }
-        return array('b', [str2state[c] for c in state])
+        return tuple(str2state[c] for c in state)
 
     def test_win_horizontal(self):
         state = [

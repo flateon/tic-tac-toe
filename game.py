@@ -136,36 +136,64 @@ class TicTacToe(Game):
         print('\n')
 
 
-class MinMax(TicTacToe):
-    def __init__(self, size: tuple[int, int] = (3, 3)):
-        super().__init__(size)
+class Strategy:
+    def __init__(self, game: Game):
+        self.game = game
         self.num_leafs = 0
 
-    def utility(self, state: state, player: player = TicTacToe.X) -> utility:
-        self.num_leafs += 1
-        return super().utility(state, player)
+    def __getattr__(self, item):
+        return getattr(self.game, item)
 
-    def minimax(self, state: state, player: player) -> action:
+    @abstractmethod
+    def action(self, state: state, player: player) -> action:
+        """
+        Returns the best action for the given state and player
+        :param state:
+        :param player:
+        :return: best action for the given state and player
+        """
+        pass
+
+    @abstractmethod
+    def evaluation(self, state: state, player: player) -> utility:
+        """
+        Returns the utility of the given state for the given player
+        :param state:
+        :param player:
+        :return: utility of the given state for the given player
+        """
+        pass
+
+
+class MinMax(Strategy):
+    def evaluation(self, state: state, player: player) -> utility:
+        self.num_leafs += 1
+        return self.utility(state, player)
+
+    def action(self, state: state, player: player) -> action:
         value = [self.min_value(self.result(state, a), player) for a in self.actions(state)]
         return self.actions(state)[value.index(max(value))]
 
     def max_value(self, state: state, player: player) -> int:
         if self.terminal_test(state):
-            return self.utility(state, player)
+            return self.evaluation(state, player)
         value = [self.min_value(self.result(state, a), player) for a in self.actions(state)]
         return max(value)
 
     def min_value(self, state: state, player: player) -> int:
         if self.terminal_test(state):
-            return self.utility(state, player)
+            return self.evaluation(state, player)
         value = [self.max_value(self.result(state, a), player) for a in self.actions(state)]
         return min(value)
 
 
-class Heuristic(TicTacToe):
-    def __init__(self, size: tuple[int, int] = (3, 3), depth: int = 3):
-        super().__init__(size)
-        self.num_leafs = 0
+class Heuristic(Strategy):
+    def __init__(self, game: Game, depth: int = 3):
+        """
+        :param game: game
+        :param depth: depth of the search
+        """
+        super().__init__(game)
         self.depth = depth
 
     @cache
@@ -194,6 +222,7 @@ class Heuristic(TicTacToe):
 
         return cnt
 
+    @cache
     def heuristic(self, state: state, player: player) -> utility:
         """
         Heuristic function
@@ -201,46 +230,53 @@ class Heuristic(TicTacToe):
         :param player: player
         :return: heuristic value
         """
-        self.num_leafs += 1
         if self.terminal_test(state):
             return self.utility(state, player) * 100
         else:
             return self.possible_winning_lines(state, player) - self.possible_winning_lines(state, -player)
 
-    def minimax(self, state: state, player: player) -> action:
+    def evaluation(self, state: state, player: player) -> utility:
+        self.num_leafs += 1
+        return self.heuristic(state, player)
+
+    def action(self, state: state, player: player) -> action:
         value = [self.min_value(self.result(state, a), player, self.depth - 1) for a in self.actions(state)]
         return self.actions(state)[value.index(max(value))]
 
     def max_value(self, state: state, player: player, depth: int) -> int:
         if depth == 0 or self.terminal_test(state):
-            return self.heuristic(state, player)
+            return self.evaluation(state, player)
         value = [self.min_value(self.result(state, a), player, depth - 1) for a in self.actions(state)]
         return max(value)
 
     def min_value(self, state: state, player: player, depth: int) -> int:
         if depth == 0 or self.terminal_test(state):
-            return self.heuristic(state, player)
+            return self.evaluation(state, player)
         value = [self.max_value(self.result(state, a), player, depth - 1) for a in self.actions(state)]
         return min(value)
 
 
 if __name__ == '__main__':
-    # game = MinMax((3, 3))
-    game = Heuristic((3, 3))
+    game = TicTacToe((3, 3))
+
+    ai = Heuristic(game, 3)
+    # ai = MinMax(game)
+
     state = game.initial_state()
     start = time.time()
     while not game.terminal_test(state):
         # action = int(input(f'Enter your move {game.actions(state)}: '))
-        action = game.minimax(state, game.X)
+        action = ai.action(state, game.X)
         state = game.result(state, action)
         game.print_state(state)
 
         if game.terminal_test(state):
             break
 
-        action = game.minimax(state, game.O)
+        action = ai.action(state, game.O)
         state = game.result(state, action)
         game.print_state(state)
-    print('Draw' if game.utility(state) == 0 else 'You lose' if game.utility(state) == 10 else 'You win')
-    print(f'Evaluated {game.num_leafs} leaf nodes')
+
+    print('Draw' if game.utility(state) == 0 else 'You lose' if game.utility(state) == game.LOSE else 'You win')
+    print(f'Evaluated {ai.num_leafs} leaf nodes')
     print(f'{(time.time() - start) * 1000:.2f} ms')

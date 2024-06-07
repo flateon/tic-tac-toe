@@ -256,10 +256,43 @@ class Heuristic(Strategy):
         return min(value)
 
 
+class AlphaBeta(Heuristic):
+    def __init__(self, game: Game, depth: int = 3):
+        super().__init__(game, depth)
+
+    def action(self, state: state, player: player) -> action:
+        value = [self.min_value(self.result(state, a), player, self.depth - 1, -float('inf'), float('inf'))
+                 for a in self.actions(state)]
+        return self.actions(state)[value.index(max(value))]
+
+    def max_value(self, state: state, player: player, depth: int, alpha: float, beta: float) -> int:
+        if depth == 0 or self.terminal_test(state):
+            return self.evaluation(state, player)
+        v = -float('inf')
+        for a in self.actions(state):
+            v = max(v, self.min_value(self.result(state, a), player, depth - 1, alpha, beta))
+            if v >= beta:
+                return v
+            alpha = max(alpha, v)
+        return v
+
+    def min_value(self, state: state, player: player, depth: int, alpha: float, beta: float) -> int:
+        if depth == 0 or self.terminal_test(state):
+            return self.evaluation(state, player)
+        v = float('inf')
+        for a in self.actions(state):
+            v = min(v, self.max_value(self.result(state, a), player, depth - 1, alpha, beta))
+            if v <= alpha:
+                return v
+            beta = min(beta, v)
+        return v
+
+
 if __name__ == '__main__':
     game = TicTacToe((3, 3))
 
-    ai = Heuristic(game, 3)
+    ai = AlphaBeta(game, 3)
+    # ai = Heuristic(game, 3)
     # ai = MinMax(game)
 
     state = game.initial_state()

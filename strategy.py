@@ -2,7 +2,7 @@ import time
 from abc import abstractmethod
 from functools import cache
 
-from game import Game, state, player, action, utility, TicTacToe
+from game import Game, State, Player, Action, Utility, TicTacToe
 
 
 class Strategy:
@@ -14,42 +14,42 @@ class Strategy:
         return getattr(self.game, item)
 
     @abstractmethod
-    def action(self, state: state, player: player) -> action:
+    def action(self, state: State, player: Player) -> Action:
         """
-        Returns the best action for the given state and player
+        Returns the best Action for the given State and Player
         :param state:
         :param player:
-        :return: best action for the given state and player
+        :return: best Action for the given State and Player
         """
         pass
 
     @abstractmethod
-    def evaluation(self, state: state, player: player) -> utility:
+    def evaluation(self, state: State, player: Player) -> Utility:
         """
-        Returns the utility of the given state for the given player
+        Returns the Utility of the given State for the given Player
         :param state:
         :param player:
-        :return: utility of the given state for the given player
+        :return: Utility of the given State for the given Player
         """
         pass
 
 
 class MinMax(Strategy):
-    def evaluation(self, state: state, player: player) -> utility:
+    def evaluation(self, state: State, player: Player) -> Utility:
         self.num_leafs += 1
         return self.utility(state, player)
 
-    def action(self, state: state, player: player) -> action:
+    def action(self, state: State, player: Player) -> Action:
         value = [self.min_value(self.result(state, a), player) for a in self.actions(state)]
         return self.actions(state)[value.index(max(value))]
 
-    def max_value(self, state: state, player: player) -> int:
+    def max_value(self, state: State, player: Player) -> int:
         if self.terminal_test(state):
             return self.evaluation(state, player)
         value = [self.min_value(self.result(state, a), player) for a in self.actions(state)]
         return max(value)
 
-    def min_value(self, state: state, player: player) -> int:
+    def min_value(self, state: State, player: Player) -> int:
         if self.terminal_test(state):
             return self.evaluation(state, player)
         value = [self.max_value(self.result(state, a), player) for a in self.actions(state)]
@@ -66,12 +66,12 @@ class Heuristic(Strategy):
         self.depth = depth
 
     @cache
-    def possible_winning_lines(self, state: state, player: player) -> int:
+    def possible_winning_lines(self, state: State, player: Player) -> int:
         """
-        Returns the number of possible winning lines for the given player
-        :param state: state
-        :param player: player
-        :return: number of possible winning lines for the given player
+        Returns the number of possible winning lines for the given Player
+        :param state: State
+        :param player: Player
+        :return: number of possible winning lines for the given Player
         """
         best_state = tuple(player if i == self.EMPTY else i for i in state)
         cnt = 0
@@ -92,11 +92,11 @@ class Heuristic(Strategy):
         return cnt
 
     @cache
-    def heuristic(self, state: state, player: player) -> utility:
+    def heuristic(self, state: State, player: Player) -> Utility:
         """
         Heuristic function
-        :param state: state
-        :param player: player
+        :param state: State
+        :param player: Player
         :return: heuristic value
         """
         if self.terminal_test(state):
@@ -104,21 +104,21 @@ class Heuristic(Strategy):
         else:
             return self.possible_winning_lines(state, player) - self.possible_winning_lines(state, -player)
 
-    def evaluation(self, state: state, player: player) -> utility:
+    def evaluation(self, state: State, player: Player) -> Utility:
         self.num_leafs += 1
         return self.heuristic(state, player)
 
-    def action(self, state: state, player: player) -> action:
+    def action(self, state: State, player: Player) -> Action:
         value = [self.min_value(self.result(state, a), player, self.depth - 1) for a in self.actions(state)]
         return self.actions(state)[value.index(max(value))]
 
-    def max_value(self, state: state, player: player, depth: int) -> int:
+    def max_value(self, state: State, player: Player, depth: int) -> int:
         if depth == 0 or self.terminal_test(state):
             return self.evaluation(state, player)
         value = [self.min_value(self.result(state, a), player, depth - 1) for a in self.actions(state)]
         return max(value)
 
-    def min_value(self, state: state, player: player, depth: int) -> int:
+    def min_value(self, state: State, player: Player, depth: int) -> int:
         if depth == 0 or self.terminal_test(state):
             return self.evaluation(state, player)
         value = [self.max_value(self.result(state, a), player, depth - 1) for a in self.actions(state)]
@@ -129,12 +129,12 @@ class AlphaBeta(Heuristic):
     def __init__(self, game: Game, depth: int = 3):
         super().__init__(game, depth)
 
-    def action(self, state: state, player: player) -> action:
+    def action(self, state: State, player: Player) -> Action:
         value = [self.min_value(self.result(state, a), player, self.depth - 1, -float('inf'), float('inf'))
                  for a in self.actions(state)]
         return self.actions(state)[value.index(max(value))]
 
-    def max_value(self, state: state, player: player, depth: int, alpha: float, beta: float) -> int:
+    def max_value(self, state: State, player: Player, depth: int, alpha: float, beta: float) -> int:
         if depth == 0 or self.terminal_test(state):
             return self.evaluation(state, player)
         v = -float('inf')
@@ -145,7 +145,7 @@ class AlphaBeta(Heuristic):
             alpha = max(alpha, v)
         return v
 
-    def min_value(self, state: state, player: player, depth: int, alpha: float, beta: float) -> int:
+    def min_value(self, state: State, player: Player, depth: int, alpha: float, beta: float) -> int:
         if depth == 0 or self.terminal_test(state):
             return self.evaluation(state, player)
         v = float('inf')

@@ -23,7 +23,6 @@ class Strategy:
         """
         pass
 
-    @abstractmethod
     def evaluation(self, state: State, player: Player) -> Utility:
         """
         Returns the Utility of the given State for the given Player
@@ -32,6 +31,11 @@ class Strategy:
         :return: Utility of the given State for the given Player
         """
         pass
+
+
+class Human(Strategy):
+    def action(self, state: State, player: Player) -> Action:
+        return int(input(f'Enter your action {game.actions(state)}: '))
 
 
 class MinMax(Strategy):
@@ -160,24 +164,31 @@ class AlphaBeta(Heuristic):
 if __name__ == '__main__':
     game = TicTacToe((3, 3))
 
-    ai = AlphaBeta(game, 3)
-    # ai = Heuristic(game, 3)
-    # ai = MinMax(game)
+    strategies = {
+        '0': MinMax,
+        '1': Heuristic,
+        '2': AlphaBeta,
+        '3': Human,
+    }
+    ai_1 = strategies.get(input('The strategy for Player 1 (0 - MinMax, 1 - Heuristic, 2 - AlphaBeta, 3 - Human):'), AlphaBeta)(game)
+    ai_2 = strategies.get(input('The strategy for Player 2 (0 - MinMax, 1 - Heuristic, 2 - AlphaBeta, 3 - Human):'), AlphaBeta)(game)
 
     state = game.initial_state()
     start = time.time()
     while not game.terminal_test(state):
-        action = ai.action(state, game.X)
+        action = ai_1.action(state, game.X)
         state = game.result(state, action)
         game.print_state(state)
 
         if game.terminal_test(state):
             break
 
-        action = ai.action(state, game.O)
+        action = ai_2.action(state, game.O)
         state = game.result(state, action)
         game.print_state(state)
 
-    print('Draw' if game.utility(state) == 0 else 'You lose' if game.utility(state) == game.LOSE else 'You win')
-    print(f'Evaluated {ai.num_leafs} leaf nodes')
-    print(f'{(time.time() - start) * 1000:.2f} ms')
+    print(
+        'Draw' if game.utility(state) == 0 else 'Player 2 win' if game.utility(state) == game.LOSE else 'Player 1 win')
+    print(f'AI 1 Evaluated {ai_1.num_leafs} leaf nodes')
+    print(f'AI 2 Evaluated {ai_2.num_leafs} leaf nodes')
+    print(f'Time: {(time.time() - start) * 1000:.2f} ms')
